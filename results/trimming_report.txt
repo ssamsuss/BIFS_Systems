@@ -1,0 +1,26 @@
+================================================================================
+READ TRIMMING REPORT (fastp-like)
+Generated: 2025-11-28 02:33:15
+================================================================================
+
+Trimming Parameters:
+  Minimum Quality: 20
+  Minimum Length: 30 bp
+  Adapter Sequence: AGATCGGAAGAGC
+
+
+Sample: Sample_1
+----------------------------------------
+  Input Reads: 161,500
+  Passed Reads: 160,688 (99.5%)
+  Adapter Trimmed: 9,866
+  Quality Trimmed: 0
+  Too Short (removed): 812
+
+Sample: Sample_2
+----------------------------------------
+  Input Reads: 158,500
+  Passed Reads: 157,581 (99.4%)
+  Adapter Trimmed: 9,732
+  Quality Trimmed: 0
+  Too Short (removed): 919
