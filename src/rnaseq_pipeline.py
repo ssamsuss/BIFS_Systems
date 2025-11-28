@@ -25,16 +25,7 @@ from typing import Dict, List, Tuple, Optional
 import urllib.request
 import urllib.error
 
-
-def install_dependencies():
-    """Install required Python packages."""
-    import subprocess
-    packages = ['pandas', 'numpy', 'matplotlib', 'seaborn', 'biopython', 'scipy']
-    for package in packages:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', package])
-
-
-# Try to import required packages, install if missing
+# Check for required dependencies
 try:
     import pandas as pd
     import numpy as np
@@ -42,15 +33,14 @@ try:
     import seaborn as sns
     from scipy import stats
     from Bio import Entrez, SeqIO
-except ImportError:
-    print("Installing required dependencies...")
-    install_dependencies()
-    import pandas as pd
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    from scipy import stats
-    from Bio import Entrez, SeqIO
+except ImportError as e:
+    missing_module = str(e).split("'")[1] if "'" in str(e) else str(e)
+    print(f"Error: Missing required dependency: {missing_module}")
+    print("\nPlease install the required dependencies:")
+    print("  pip install -r requirements.txt")
+    print("\nOr install individually:")
+    print("  pip install pandas numpy matplotlib seaborn biopython scipy")
+    sys.exit(1)
 
 
 class GenBankDownloader:
@@ -455,11 +445,16 @@ class ExpressionQuantifier:
         self.counts = {}
         self.tpm = {}
         self.cpm = {}
+        self.gene_lengths = {}  # Store actual gene lengths for TPM calculation
     
     def quantify_expression(self, fastq_path: str, reference_genes: Dict[str, str],
                             sample_name: str) -> Dict[str, int]:
         """Quantify expression by mapping reads to reference genes."""
         print(f"Quantifying expression for {sample_name}...")
+        
+        # Store gene lengths for TPM calculation
+        for gene, seq in reference_genes.items():
+            self.gene_lengths[gene] = len(seq)
         
         # Build kmer index for efficient matching
         kmer_size = 15
@@ -502,15 +497,30 @@ class ExpressionQuantifier:
         return gene_counts
     
     def calculate_tpm(self) -> pd.DataFrame:
-        """Calculate Transcripts Per Million (TPM)."""
+        """
+        Calculate Transcripts Per Million (TPM).
+        
+        TPM = (reads / gene_length_kb) / (sum(reads / gene_length_kb)) * 1e6
+        
+        Uses actual gene lengths from reference sequences when available.
+        """
         # Create counts dataframe
         counts_df = pd.DataFrame(self.counts)
         
-        # For demonstration, assume all genes have same length
-        gene_length = 1000  # bp
+        # Get gene lengths (in kilobases)
+        gene_lengths_kb = pd.Series({
+            gene: length / 1000 for gene, length in self.gene_lengths.items()
+        })
         
-        # RPK (reads per kilobase)
-        rpk = counts_df / (gene_length / 1000)
+        # Handle genes with no length info (use median length)
+        missing_genes = set(counts_df.index) - set(gene_lengths_kb.index)
+        if missing_genes:
+            median_length_kb = gene_lengths_kb.median() if len(gene_lengths_kb) > 0 else 1.0
+            for gene in missing_genes:
+                gene_lengths_kb[gene] = median_length_kb
+        
+        # RPK (reads per kilobase) - normalize by gene length
+        rpk = counts_df.div(gene_lengths_kb, axis=0)
         
         # Scaling factor (sum of all RPK per sample, in millions)
         scaling_factor = rpk.sum() / 1e6
@@ -763,10 +773,27 @@ class Visualizer:
 
 
 class EnrichmentAnalyzer:
-    """Perform simple enrichment analysis."""
+    """
+    Perform GO term enrichment analysis (DEMONSTRATION MODE).
+    
+    NOTE: This implementation uses simulated GO term assignments for demonstration
+    purposes. In a production environment, you would integrate with real gene
+    annotation databases such as:
+    - Gene Ontology (GO) database
+    - KEGG pathways
+    - Reactome
+    - MSigDB gene sets
+    
+    For real enrichment analysis, consider using tools like:
+    - gseapy (Python)
+    - clusterProfiler (R)
+    - DAVID
+    - Enrichr
+    """
     
     def __init__(self):
-        # Simulated GO terms and pathways
+        # Real GO terms (these are actual GO IDs and descriptions)
+        # In production, these would come from a GO database
         self.go_terms = {
             'GO:0006412': 'translation',
             'GO:0006414': 'translational elongation',
@@ -783,7 +810,12 @@ class EnrichmentAnalyzer:
         self.gene_go_mapping = {}
     
     def assign_random_go_terms(self, genes: List[str]):
-        """Assign random GO terms to genes for demonstration."""
+        """
+        Assign random GO terms to genes for demonstration purposes.
+        
+        WARNING: This produces simulated annotations. In production, use real
+        gene annotation databases (GO, KEGG, Reactome, etc.)
+        """
         for gene in genes:
             # Assign 2-5 random GO terms to each gene
             num_terms = random.randint(2, 5)
@@ -791,8 +823,16 @@ class EnrichmentAnalyzer:
     
     def perform_enrichment(self, top_genes: List[str], all_genes: List[str],
                            output_dir: str) -> pd.DataFrame:
-        """Perform simple enrichment analysis."""
-        print("Performing enrichment analysis...")
+        """
+        Perform GO term enrichment analysis.
+        
+        DEMONSTRATION MODE: Uses simulated GO term assignments.
+        Results are for illustrative purposes only.
+        
+        For production use, integrate with real annotation databases.
+        """
+        print("Performing enrichment analysis (DEMONSTRATION MODE)...")
+        print("  Note: Using simulated GO term assignments for illustration")
         
         # Assign GO terms if not already done
         if not self.gene_go_mapping:
@@ -915,8 +955,14 @@ def create_simulated_gene_reference() -> Dict[str, str]:
     return genes
 
 
-def main():
-    """Main pipeline execution."""
+def main(genbank_accessions: List[str] = None):
+    """
+    Main pipeline execution.
+    
+    Args:
+        genbank_accessions: Optional list of GenBank accession numbers to download.
+                           Defaults to ['NM_002046.7', 'NM_001101.5'] (GAPDH and ACTB).
+    """
     print("=" * 80)
     print("RNA-SEQ ANALYSIS PIPELINE")
     print("=" * 80)
@@ -939,11 +985,15 @@ def main():
     
     downloader = GenBankDownloader()
     
-    # Use well-known GenBank accessions (human housekeeping gene sequences)
-    accessions = ['NM_002046.7', 'NM_001101.5']  # GAPDH and ACTB
+    # Use default accessions if none provided
+    # Default: human housekeeping genes GAPDH and ACTB
+    if genbank_accessions is None:
+        genbank_accessions = ['NM_002046.7', 'NM_001101.5']
+    
+    print(f"Target accessions: {', '.join(genbank_accessions)}")
     
     try:
-        sequences = downloader.fetch_multiple(accessions)
+        sequences = downloader.fetch_multiple(genbank_accessions)
         print(f"\nDownloaded {len(sequences)} sequences from GenBank")
     except Exception as e:
         print(f"Error downloading from GenBank: {e}")
