@@ -1,0 +1,37 @@
+================================================================================
+FASTQC SUMMARY REPORT
+Generated: 2025-11-28 02:39:44
+================================================================================
+
+
+Sample: Sample_1
+----------------------------------------
+  Total Reads: 161,500
+  Total Bases: 16,150,000
+  Mean Read Length: 100.0 bp
+  Mean Quality Score: 32.0
+  Median Quality Score: 32.0
+  Mean GC Content: 40.2%
+  GC Std Dev: 4.92%
+  Adapter Contamination: 2.26%
+
+  Quality Assessment:
+    ✓ PASS: High quality reads (Q>=30)
+    ✓ PASS: Normal GC content (40-60%)
+    ⚠ WARN: Moderate adapter contamination (1-5%)
+
+Sample: Sample_2
+----------------------------------------
+  Total Reads: 158,500
+  Total Bases: 15,850,000
+  Mean Read Length: 100.0 bp
+  Mean Quality Score: 32.0
+  Median Quality Score: 32.0
+  Mean GC Content: 40.2%
+  GC Std Dev: 4.94%
+  Adapter Contamination: 2.31%
+
+  Quality Assessment:
+    ✓ PASS: High quality reads (Q>=30)
+    ✓ PASS: Normal GC content (40-60%)
+    ⚠ WARN: Moderate adapter contamination (1-5%)
